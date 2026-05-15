@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protocol — Google Sign-In</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0e0e12; color: #e0e0ea;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    }
+    .card {
+      background: #16161e; border: 1px solid #2a2a3a; border-radius: 16px;
+      padding: 48px 40px; max-width: 420px; width: 90%;
+      text-align: center; box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+    .logo { font-size: 12px; font-weight: 700; letter-spacing: 0.2em;
+      text-transform: uppercase; color: #4a8fff; margin-bottom: 28px; opacity: 0.7; }
+    h1 { font-size: 22px; font-weight: 600; color: #f0f0f4; margin-bottom: 8px; }
+    .sub { font-size: 14px; color: #666; margin-bottom: 32px; line-height: 1.6; }
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 13px 20px; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-google { background: #fff; color: #1a1a1a; }
+    .status { margin-top: 20px; font-size: 14px; min-height: 20px; line-height: 1.5; }
+    .status.error   { color: #ff5c5c; }
+    .status.success { color: #3fcf8e; }
+    .status.info    { color: #4a8fff; }
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid #4a8fff44; border-top-color: #4a8fff;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .close-hint { margin-top: 24px; font-size: 13px; color: #555; display: none; }
+    .domain-note { margin-top: 20px; font-size: 12px; color: #444; line-height: 1.6; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Protocol</div>
+  <h1 id="title">Sign in with Google</h1>
+  <p class="sub" id="sub">This will sign you into your Protocol desktop app.</p>
+
+  <button class="btn btn-google" id="sign-in-btn" onclick="doGoogleSignIn()">
+    <svg width="20" height="20" viewBox="0 0 48 48">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    </svg>
+    Continue with Google
+  </button>
+
+  <div class="status" id="status"></div>
+  <div class="close-hint" id="close-hint">You can now close this tab — Protocol is signed in.</div>
+  <div class="domain-note">Only @gmail.com, @outlook.com &amp; @yahoo.com are accepted.</div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+  /* =====================================================================
+   * PASTE YOUR FIREBASE CONFIG HERE  (same values as in Protocol index.html)
+   * ===================================================================== */
+  var FIREBASE_CONFIG = {
+    apiKey:            "YOUR_API_KEY",
+    authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
+    projectId:         "YOUR_PROJECT_ID",
+    storageBucket:     "YOUR_PROJECT_ID.appspot.com",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId:             "YOUR_APP_ID"
+  };
+
+  /* Must match TRUSTED_DOMAINS in auth.js */
+  var TRUSTED_DOMAINS = ['gmail.com', 'outlook.com', 'yahoo.com'];
+  /* ===================================================================== */
+
+  firebase.initializeApp(FIREBASE_CONFIG);
+  var fbAuth = firebase.auth();
+  var fbDb   = firebase.firestore();
+
+  var sessionId = new URLSearchParams(window.location.search).get('session');
+
+  function setStatus(msg, type) {
+    var el = document.getElementById('status');
+    el.className = 'status ' + (type || '');
+    el.innerHTML = msg;
+  }
+
+  function isDomainTrusted(email) {
+    if (!email) return false;
+    var parts = email.toLowerCase().split('@');
+    return parts.length === 2 && TRUSTED_DOMAINS.indexOf(parts[1]) !== -1;
+  }
+
+  if (!sessionId) {
+    document.getElementById('sub').textContent = 'This page should be opened automatically by the Protocol desktop app.';
+    document.getElementById('sign-in-btn').disabled = true;
+    setStatus('No session found. Open Protocol and click "Continue with Google".', 'error');
+  }
+
+  async function doGoogleSignIn() {
+    if (!sessionId) return;
+    var btn = document.getElementById('sign-in-btn');
+    btn.disabled = true;
+    setStatus('<span class="spinner"></span>Opening Google sign-in...', 'info');
+
+    try {
+      var provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+
+      /* signInWithPopup works perfectly here — this is a real browser tab */
+      var result = await fbAuth.signInWithPopup(provider);
+      var user   = result.user;
+
+      /* Domain check */
+      if (!isDomainTrusted(user.email)) {
+        await fbAuth.signOut();
+        setStatus('Only @gmail.com, @outlook.com &amp; @yahoo.com are allowed.', 'error');
+        btn.disabled = false;
+        return;
+      }
+
+      setStatus('<span class="spinner"></span>Finishing sign-in...', 'info');
+
+      /*
+       * Get the Google OAuth ID token — NO Cloud Function needed.
+       * Protocol desktop will call:
+       *   signInWithCredential(GoogleAuthProvider.credential(idToken))
+       * This works entirely on the free Spark plan.
+       */
+      var idToken = await user.getIdToken();
+
+      /* Write result to Firestore — Protocol desktop is polling this doc */
+      await fbDb.collection('googleSessions').doc(sessionId).update({
+        status:      'complete',
+        idToken:     idToken,
+        email:       user.email,
+        displayName: user.displayName || ''
+      });
+
+      /* Sign out of this relay tab — Protocol owns the actual session */
+      await fbAuth.signOut();
+
+      setStatus('Signed in successfully!', 'success');
+      document.getElementById('close-hint').style.display = 'block';
+      document.getElementById('title').textContent = 'All done!';
+      document.getElementById('sub').textContent = 'Protocol desktop is now signed in. You can close this tab.';
+      btn.style.display = 'none';
+
+    } catch (e) {
+      if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+        setStatus('Sign-in cancelled. Click the button to try again.', 'error');
+        btn.disabled = false;
+        return;
+      }
+      /* Tell Protocol the sign-in failed */
+      try {
+        await fbDb.collection('googleSessions').doc(sessionId).update({
+          status: 'error', errorMessage: e.message || 'Google sign-in failed.'
+        });
+      } catch (e2) {}
+      setStatus('Error: ' + (e.message || 'Unknown error.'), 'error');
+      btn.disabled = false;
+    }
+  }
+</script>
+</body>
+</html>
