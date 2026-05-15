@@ -3,55 +3,196 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Protocol — Google Sign-In</title>
+  <title>Protocol — Sign In</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syncopate:wght@700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #0e0e12; color: #e0e0ea;
-      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      color: #e2e2ea;
+      overflow: hidden;
+      position: relative;
+
+      /* 7-layer dark textured gradient */
+      background:
+        radial-gradient(ellipse 120% 80% at 50% -10%, rgba(74, 143, 255, 0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 80% 60% at 90% 20%, rgba(120, 80, 255, 0.05) 0%, transparent 50%),
+        radial-gradient(ellipse 60% 80% at 10% 80%, rgba(30, 120, 200, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse 100% 50% at 50% 100%, rgba(10, 10, 30, 0.8) 0%, transparent 70%),
+        linear-gradient(160deg, #0d0d18 0%, #0a0a14 40%, #080810 70%, #06060e 100%),
+        repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(255,255,255,0.008) 40px, rgba(255,255,255,0.008) 41px),
+        repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(255,255,255,0.005) 40px, rgba(255,255,255,0.005) 41px);
     }
+
+    /* Subtle noise texture overlay */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* Ambient glow orbs */
+    body::after {
+      content: '';
+      position: fixed;
+      width: 600px; height: 600px;
+      top: -200px; left: 50%; transform: translateX(-50%);
+      background: radial-gradient(circle, rgba(74, 143, 255, 0.04) 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+
     .card {
-      background: #16161e; border: 1px solid #2a2a3a; border-radius: 16px;
-      padding: 48px 40px; max-width: 420px; width: 90%;
-      text-align: center; box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+      position: relative; z-index: 1;
+      background: rgba(255,255,255,0.028);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 20px;
+      padding: 52px 44px;
+      max-width: 400px; width: 92%;
+      text-align: center;
+      backdrop-filter: blur(24px) saturate(140%);
+      -webkit-backdrop-filter: blur(24px) saturate(140%);
+      box-shadow:
+        0 0 0 0.5px rgba(255,255,255,0.04) inset,
+        0 32px 80px rgba(0,0,0,0.6),
+        0 8px 24px rgba(0,0,0,0.4),
+        0 0 60px rgba(74,143,255,0.04);
     }
-    .logo { font-size: 12px; font-weight: 700; letter-spacing: 0.2em;
-      text-transform: uppercase; color: #4a8fff; margin-bottom: 28px; opacity: 0.7; }
-    h1 { font-size: 22px; font-weight: 600; color: #f0f0f4; margin-bottom: 8px; }
-    .sub { font-size: 14px; color: #666; margin-bottom: 32px; line-height: 1.6; }
+
+    .logo {
+      font-family: 'Syncopate', sans-serif;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: 0.08em;
+      color: #fff;
+      margin-bottom: 36px;
+      opacity: 0.9;
+    }
+
+    .logo span {
+      background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.6) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 500;
+      color: #f0f0f6;
+      letter-spacing: -0.01em;
+      margin-bottom: 10px;
+    }
+
+    .sub {
+      font-size: 13.5px;
+      font-weight: 300;
+      color: rgba(200,200,220,0.45);
+      margin-bottom: 36px;
+      line-height: 1.7;
+      letter-spacing: 0.01em;
+    }
+
+    .divider {
+      width: 32px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      margin: 0 auto 36px;
+    }
+
     .btn {
       display: flex; align-items: center; justify-content: center; gap: 10px;
-      width: 100%; padding: 13px 20px; border: none; border-radius: 10px;
-      font-size: 15px; font-weight: 600; cursor: pointer;
-      transition: opacity 0.15s, transform 0.1s;
+      width: 100%; padding: 13px 20px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
+      position: relative;
+      overflow: hidden;
     }
-    .btn:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    .btn-google { background: #fff; color: #1a1a1a; }
-    .status { margin-top: 20px; font-size: 14px; min-height: 20px; line-height: 1.5; }
-    .status.error   { color: #ff5c5c; }
-    .status.success { color: #3fcf8e; }
-    .status.info    { color: #4a8fff; }
+
+    .btn::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 100%);
+      opacity: 0; transition: opacity 0.2s;
+    }
+
+    .btn:hover:not(:disabled)::before { opacity: 1; }
+    .btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,0.18);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    .btn:active:not(:disabled) { transform: translateY(0); }
+    .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+    .btn-google {
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.88);
+    }
+
+    .status {
+      margin-top: 22px;
+      font-size: 13px;
+      font-weight: 400;
+      min-height: 18px;
+      line-height: 1.6;
+      letter-spacing: 0.01em;
+    }
+    .status.error   { color: #ff6b6b; }
+    .status.success { color: #4ade80; }
+    .status.info    { color: rgba(150,180,255,0.8); }
+
     .spinner {
-      display: inline-block; width: 16px; height: 16px;
-      border: 2px solid #4a8fff44; border-top-color: #4a8fff;
-      border-radius: 50%; animation: spin 0.7s linear infinite;
+      display: inline-block; width: 14px; height: 14px;
+      border: 1.5px solid rgba(150,180,255,0.2);
+      border-top-color: rgba(150,180,255,0.8);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
       vertical-align: middle; margin-right: 6px;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .close-hint { margin-top: 24px; font-size: 13px; color: #555; display: none; }
-    .domain-note { margin-top: 20px; font-size: 12px; color: #444; line-height: 1.6; }
+
+    .close-hint {
+      margin-top: 28px;
+      font-size: 12.5px;
+      font-weight: 300;
+      color: rgba(200,200,220,0.35);
+      display: none;
+      line-height: 1.7;
+      letter-spacing: 0.01em;
+    }
+
+    .footer {
+      margin-top: 36px;
+      padding-top: 24px;
+      border-top: 1px solid rgba(255,255,255,0.05);
+      font-size: 11.5px;
+      font-weight: 300;
+      color: rgba(255,255,255,0.18);
+      letter-spacing: 0.02em;
+    }
   </style>
 </head>
 <body>
 <div class="card">
-  <div class="logo">Protocol</div>
-  <h1 id="title">Sign in with Google</h1>
-  <p class="sub" id="sub">This will sign you into your Protocol desktop app.</p>
+  <div class="logo"><span>PROTOCOL</span></div>
+
+  <h1 id="title">Sign in to continue</h1>
+  <p class="sub" id="sub">Complete sign-in to your Protocol desktop app.</p>
+  <div class="divider"></div>
 
   <button class="btn btn-google" id="sign-in-btn" onclick="doGoogleSignIn()">
-    <svg width="20" height="20" viewBox="0 0 48 48">
+    <svg width="18" height="18" viewBox="0 0 48 48">
       <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
       <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
       <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
@@ -61,8 +202,9 @@
   </button>
 
   <div class="status" id="status"></div>
-  <div class="close-hint" id="close-hint">You can now close this tab — Protocol is signed in.</div>
-  <div class="domain-note">Only @gmail.com, @outlook.com &amp; @yahoo.com are accepted.</div>
+  <div class="close-hint" id="close-hint">You can safely close this tab — Protocol is now signed in.</div>
+
+  <div class="footer">Secure authentication via Google</div>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -70,21 +212,15 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <script>
-  /* =====================================================================
-   * PASTE YOUR FIREBASE CONFIG HERE  (same values as in Protocol index.html)
-   * ===================================================================== */
   var FIREBASE_CONFIG = {
-    apiKey:            "YOUR_API_KEY",
-    authDomain:        "YOUR_PROJECT_ID.firebaseapp.com",
-    projectId:         "YOUR_PROJECT_ID",
-    storageBucket:     "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId:             "YOUR_APP_ID"
+    apiKey:            "AIzaSyC5TA-7Tnvxomhr_0wqUXxx_0cDjYjFslk",
+    authDomain:        "protocol-app-68172.firebaseapp.com",
+    projectId:         "protocol-app-68172",
+    storageBucket:     "protocol-app-68172.firebasestorage.app",
+    messagingSenderId: "132607409250",
+    appId:             "1:132607409250:web:01aef039ac682e3e78653b",
+    measurementId:     "G-772FJNTT10"
   };
-
-  /* Must match TRUSTED_DOMAINS in auth.js */
-  var TRUSTED_DOMAINS = ['gmail.com', 'outlook.com', 'yahoo.com'];
-  /* ===================================================================== */
 
   firebase.initializeApp(FIREBASE_CONFIG);
   var fbAuth = firebase.auth();
@@ -98,14 +234,8 @@
     el.innerHTML = msg;
   }
 
-  function isDomainTrusted(email) {
-    if (!email) return false;
-    var parts = email.toLowerCase().split('@');
-    return parts.length === 2 && TRUSTED_DOMAINS.indexOf(parts[1]) !== -1;
-  }
-
   if (!sessionId) {
-    document.getElementById('sub').textContent = 'This page should be opened automatically by the Protocol desktop app.';
+    document.getElementById('sub').textContent = 'This page is opened automatically by the Protocol desktop app.';
     document.getElementById('sign-in-btn').disabled = true;
     setStatus('No session found. Open Protocol and click "Continue with Google".', 'error');
   }
@@ -114,35 +244,19 @@
     if (!sessionId) return;
     var btn = document.getElementById('sign-in-btn');
     btn.disabled = true;
-    setStatus('<span class="spinner"></span>Opening Google sign-in...', 'info');
+    setStatus('<span class="spinner"></span>Opening Google sign-in\u2026', 'info');
 
     try {
       var provider = new firebase.auth.GoogleAuthProvider();
       provider.setCustomParameters({ prompt: 'select_account' });
 
-      /* signInWithPopup works perfectly here — this is a real browser tab */
       var result = await fbAuth.signInWithPopup(provider);
       var user   = result.user;
 
-      /* Domain check */
-      if (!isDomainTrusted(user.email)) {
-        await fbAuth.signOut();
-        setStatus('Only @gmail.com, @outlook.com &amp; @yahoo.com are allowed.', 'error');
-        btn.disabled = false;
-        return;
-      }
+      setStatus('<span class="spinner"></span>Finishing sign-in\u2026', 'info');
 
-      setStatus('<span class="spinner"></span>Finishing sign-in...', 'info');
-
-      /*
-       * Get the Google OAuth ID token — NO Cloud Function needed.
-       * Protocol desktop will call:
-       *   signInWithCredential(GoogleAuthProvider.credential(idToken))
-       * This works entirely on the free Spark plan.
-       */
       var idToken = await user.getIdToken();
 
-      /* Write result to Firestore — Protocol desktop is polling this doc */
       await fbDb.collection('googleSessions').doc(sessionId).update({
         status:      'complete',
         idToken:     idToken,
@@ -150,22 +264,20 @@
         displayName: user.displayName || ''
       });
 
-      /* Sign out of this relay tab — Protocol owns the actual session */
       await fbAuth.signOut();
 
-      setStatus('Signed in successfully!', 'success');
+      setStatus('Signed in successfully.', 'success');
       document.getElementById('close-hint').style.display = 'block';
-      document.getElementById('title').textContent = 'All done!';
-      document.getElementById('sub').textContent = 'Protocol desktop is now signed in. You can close this tab.';
+      document.getElementById('title').textContent = 'All done';
+      document.getElementById('sub').textContent = 'Protocol desktop is now signed in.';
       btn.style.display = 'none';
 
     } catch (e) {
       if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
-        setStatus('Sign-in cancelled. Click the button to try again.', 'error');
+        setStatus('Sign-in cancelled.', 'error');
         btn.disabled = false;
         return;
       }
-      /* Tell Protocol the sign-in failed */
       try {
         await fbDb.collection('googleSessions').doc(sessionId).update({
           status: 'error', errorMessage: e.message || 'Google sign-in failed.'
