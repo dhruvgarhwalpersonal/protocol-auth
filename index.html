@@ -252,13 +252,16 @@
       var result = await fbAuth.signInWithPopup(provider);
       var user   = result.user;
 
-      setStatus('<span class="spinner"></span>Finishing sign-in\u2026', 'info');
+      var googleIdToken = result.credential ? result.credential.idToken : null;
+      if (!googleIdToken) {
+        throw new Error('Could not retrieve Google credential. Please try again.');
+      }
 
-      var idToken = await user.getIdToken();
+      setStatus('<span class="spinner"></span>Finishing sign-in\u2026', 'info');
 
       await fbDb.collection('googleSessions').doc(sessionId).update({
         status:      'complete',
-        idToken:     idToken,
+        idToken:     googleIdToken,
         email:       user.email,
         displayName: user.displayName || ''
       });
