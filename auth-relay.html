@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protocol — Google Sign-In</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0e0e12;
+      color: #e0e0ea;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .card {
+      background: #16161e;
+      border: 1px solid #2a2a3a;
+      border-radius: 16px;
+      padding: 48px 40px;
+      max-width: 420px;
+      width: 90%;
+      text-align: center;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.5);
+    }
+
+    .logo {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #4a8fff;
+      margin-bottom: 32px;
+      opacity: 0.8;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      color: #f0f0f4;
+      margin-bottom: 10px;
+    }
+
+    .sub {
+      font-size: 14px;
+      color: #888;
+      margin-bottom: 36px;
+      line-height: 1.5;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 13px 20px;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); opacity: 1; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    .btn-google {
+      background: #fff;
+      color: #1a1a1a;
+    }
+    .btn-google svg { flex-shrink: 0; }
+
+    .status {
+      margin-top: 24px;
+      font-size: 14px;
+      min-height: 20px;
+      line-height: 1.5;
+    }
+    .status.error  { color: #ff5c5c; }
+    .status.success { color: #3fcf8e; }
+    .status.info   { color: #4a8fff; }
+
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid #4a8fff44;
+      border-top-color: #4a8fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .close-hint {
+      margin-top: 28px;
+      font-size: 13px;
+      color: #444;
+    }
+
+    .domain-note {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #555;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">Protocol</div>
+  <h1 id="title">Sign in with Google</h1>
+  <p class="sub" id="sub">This will sign you into your Protocol desktop app.<br>Only @gmail.com, @outlook.com &amp; @yahoo.com addresses are accepted.</p>
+
+  <button class="btn btn-google" id="sign-in-btn" onclick="doGoogleSignIn()">
+    <svg width="20" height="20" viewBox="0 0 48 48">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      <path fill="none" d="M0 0h48v48H0z"/>
+    </svg>
+    Continue with Google
+  </button>
+
+  <div class="status" id="status"></div>
+  <div class="close-hint" id="close-hint" style="display:none">You can now close this tab — Protocol is signed in.</div>
+  <div class="domain-note">Only @gmail.com, @outlook.com &amp; @yahoo.com addresses are allowed.</div>
+</div>
+
+<!-- ── Firebase SDK ── -->
+<!-- Replace with the same Firebase version your Protocol app uses -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-functions-compat.js"></script>
+
+<script>
+  /* ════════════════════════════════════════════════════════════════════════
+   *  CONFIGURE: paste your Firebase config here (same as in Protocol)
+   * ════════════════════════════════════════════════════════════════════════ */
+  var FIREBASE_CONFIG = {
+    apiKey:            "YOUR_API_KEY",
+    authDomain:        "YOUR_AUTH_DOMAIN",
+    projectId:         "YOUR_PROJECT_ID",
+    storageBucket:     "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId:             "YOUR_APP_ID"
+  };
+
+  /* Trusted domains — must match auth.js */
+  var TRUSTED_DOMAINS = ['gmail.com', 'outlook.com', 'yahoo.com'];
+
+  /* ════════════════════════════════════════════════════════════════════════
+   *  Init
+   * ════════════════════════════════════════════════════════════════════════ */
+  firebase.initializeApp(FIREBASE_CONFIG);
+  var db   = firebase.firestore();
+  var auth = firebase.auth();
+
+  /* Read session ID from URL ?session=xxx */
+  var sessionId = new URLSearchParams(window.location.search).get('session');
+
+  function setStatus(msg, type) {
+    var el = document.getElementById('status');
+    el.className = 'status ' + (type || '');
+    el.innerHTML = msg;
+  }
+
+  function validateDomain(email) {
+    if (!email) return false;
+    var parts = email.toLowerCase().split('@');
+    if (parts.length !== 2) return false;
+    return TRUSTED_DOMAINS.indexOf(parts[1]) !== -1;
+  }
+
+  async function doGoogleSignIn() {
+    if (!sessionId) {
+      setStatus('Missing session ID. Please try again from the Protocol app.', 'error');
+      return;
+    }
+
+    var btn = document.getElementById('sign-in-btn');
+    btn.disabled = true;
+    setStatus('<span class="spinner"></span>Opening Google sign-in…', 'info');
+
+    try {
+      var provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+
+      /* signInWithPopup works fine in a real browser */
+      var result = await auth.signInWithPopup(provider);
+      var user   = result.user;
+
+      /* Domain check */
+      if (!validateDomain(user.email)) {
+        await auth.signOut();
+        setStatus('Only @gmail.com, @outlook.com &amp; @yahoo.com addresses are allowed. Please use a trusted email.', 'error');
+        btn.disabled = false;
+        return;
+      }
+
+      setStatus('<span class="spinner"></span>Signing you into Protocol…', 'info');
+
+      /* Mint a custom token via Cloud Function and write it to the session doc.
+       * The Cloud Function "mintCustomToken" receives { uid } and returns { token }.
+       * See cloud-function-mintCustomToken.js (included in this package) for setup. */
+      var functions = firebase.functions();
+      var mintToken = functions.httpsCallable('mintCustomToken');
+      var tokenResult = await mintToken({ uid: user.uid });
+      var customToken = tokenResult.data.token;
+
+      /* Write result to Firestore — Protocol desktop app is polling this doc */
+      await db.collection('googleSessions').doc(sessionId).update({
+        status:      'complete',
+        customToken: customToken,
+        email:       user.email,
+        displayName: user.displayName || ''
+      });
+
+      /* Sign out from this relay tab — the desktop app signs in with the token */
+      await auth.signOut();
+
+      setStatus('✓ Signed in successfully!', 'success');
+      document.getElementById('close-hint').style.display = 'block';
+      document.getElementById('title').textContent = 'All done!';
+      document.getElementById('sub').textContent = 'Protocol is now signed in. You can close this tab.';
+      btn.style.display = 'none';
+
+    } catch (e) {
+      if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+        setStatus('Sign-in was cancelled. Click the button to try again.', 'error');
+        btn.disabled = false;
+        return;
+      }
+
+      /* Write error to session doc so Protocol app can surface it */
+      try {
+        await db.collection('googleSessions').doc(sessionId).update({
+          status:       'error',
+          errorMessage: e.message || 'Google sign-in failed.'
+        });
+      } catch (e2) { /* ignore */ }
+
+      setStatus('Sign-in failed: ' + (e.message || 'Unknown error.'), 'error');
+      btn.disabled = false;
+    }
+  }
+
+  /* If we have a session ID, show it in the sub text for debugging */
+  if (!sessionId) {
+    document.getElementById('sub').textContent =
+      'No session ID found. This page should be opened by the Protocol desktop app.';
+    document.getElementById('sign-in-btn').disabled = true;
+    setStatus('Open from Protocol app to sign in.', 'error');
+  }
+</script>
+</body>
+</html>
