@@ -237,6 +237,18 @@
     document.getElementById('sub').textContent = 'Opened automatically by Protocol desktop.';
     document.getElementById('sign-in-btn').disabled = true;
     setStatus('No session found. Open Protocol and click "Continue with Google".', 'error');
+  } else {
+    /* Watch for cancellation from the desktop app */
+    var _cancelWatcher = setInterval(async function() {
+      try {
+        var snap = await fbDb.collection('googleSessions').doc(sessionId).get();
+        if (!snap.exists || snap.data().status === 'cancelled') {
+          clearInterval(_cancelWatcher);
+          setStatus('Sign-in was cancelled from the app.', 'error');
+          setTimeout(function() { window.close(); }, 800);
+        }
+      } catch(e) {}
+    }, 2000);
   }
 
   async function doGoogleSignIn() {
@@ -257,6 +269,8 @@
         throw new Error('Could not retrieve Google credential. Please try again.');
       }
 
+      clearInterval(_cancelWatcher);
+
       setStatus('<span class="spinner"></span>Finishing sign-in\u2026', 'info');
 
       await fbDb.collection('googleSessions').doc(sessionId).update({
@@ -272,6 +286,9 @@
       setStatus('All done. Protocol desktop is ready.', 'success');
       document.getElementById('close-hint').style.display = 'block';
       btn.style.display = 'none';
+
+      /* Auto-close this tab after 1 second */
+      setTimeout(function() { window.close(); }, 1000);
 
     } catch (e) {
       if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
